@@ -22,7 +22,7 @@
   "extra": {
     "laravel": {
       "providers": [
-        "Pittacusw\\Core\\Providers\\CoreServiceProvider",
+        "Pittacusw\\Core\\Providers\\CoreServiceProvider"
       ]
     }
   },
