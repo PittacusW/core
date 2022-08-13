@@ -8,9 +8,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Pittacusw\Core\Commands\GitAddCommand;
 use Pittacusw\Core\Commands\GitPullCommand;
-use PittacusW\Core\Middlewares\SecurityHeaders;
+use Pittacusw\Core\Middlewares\SecurityHeaders;
 use Pittacusw\Core\Commands\ComposerInstallCommand;
-use function base_path;
 
 class CoreServiceProvider extends ServiceProvider {
 
@@ -27,6 +26,7 @@ class CoreServiceProvider extends ServiceProvider {
    * @return void
    */
   public function boot(Router $router, Kernel $kernel) {
+    require base_path() . '/vendor/autoload.php';
     $kernel->pushMiddleware(SecurityHeaders::class);
     $this->loadRoutesFrom(__DIR__.'/../../../routes/api.php');
   }
