@@ -44,11 +44,11 @@ class CoreServiceProvider extends ServiceProvider {
     $this->app->singleton('command.git.pull', function($app) {
       return new GitPullCommand;
     });
-    $this->commands('command.git.add');
+    $this->commands('command.git.pull');
     $this->app->singleton('command.composer.install', function($app) {
       return new ComposerInstallCommand;
     });
-    $this->commands('command.git.add');
+    $this->commands('command.composer.install');
   }
 
   public function provides() {
