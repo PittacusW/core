@@ -28,7 +28,7 @@ class CoreServiceProvider extends ServiceProvider {
    */
   public function boot(Router $router, Kernel $kernel) {
     $kernel->pushMiddleware(SecurityHeaders::class);
-    $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
+    $this->loadRoutesFrom(__DIR__.'/../../../routes/api.php');
   }
 
   /**
