@@ -26,7 +26,6 @@ class CoreServiceProvider extends ServiceProvider {
    * @return void
    */
   public function boot(Router $router, Kernel $kernel) {
-    require base_path() . '/vendor/autoload.php';
     $kernel->pushMiddleware(SecurityHeaders::class);
     $this->loadRoutesFrom(__DIR__.'/../../../routes/api.php');
   }

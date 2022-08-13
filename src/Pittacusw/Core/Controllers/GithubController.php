@@ -3,8 +3,8 @@
 namespace Pittacusw\Core\Controllers;
 
 use Illuminate\Http\Request;
-use PittacusW\Core\Jobs\GitPull;
 use Illuminate\Routing\Controller;
+use Pittacusw\Core\Middlewares\Jobs\GitPull;
 
 class GithubController extends Controller {
 

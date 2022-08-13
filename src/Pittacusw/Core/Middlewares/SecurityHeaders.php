@@ -1,6 +1,6 @@
 <?php
 
-namespace PittacusW\Core\Middlewares;
+namespace Pittacusw\Core\Middlewares;
 
 use Closure;
 use Illuminate\Http\Request;
