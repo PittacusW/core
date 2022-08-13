@@ -13,44 +13,27 @@ use Pittacusw\Core\Commands\ComposerInstallCommand;
 
 class CoreServiceProvider extends ServiceProvider {
 
-  /**
-   * Indicates if loading of the provider is deferred.
-   *
-   * @var bool
-   */
   protected $defer = FALSE;
 
-  /**
-   * Bootstrap the application events.
-   *
-   * @return void
-   */
   public function boot(Router $router, Kernel $kernel) {
     $kernel->pushMiddleware(SecurityHeaders::class);
-    $this->loadRoutesFrom(__DIR__.'/../../../routes/api.php');
+    $this->loadRoutesFrom(__DIR__ . '/../../../routes/api.php');
   }
 
-  /**
-   * Register the service provider.
-   *
-   * @return void
-   */
   public function register() {
     $this->app->singleton('command.git.add', function($app) {
       return new GitAddCommand;
     });
-    $this->commands('command.git.add');
 
     $this->app->singleton('command.git.pull', function($app) {
       return new GitPullCommand;
     });
-    $this->commands('command.git.pull');
     $this->app->singleton('command.composer.install', function($app) {
       return new ComposerInstallCommand;
     });
+    $this->commands('command.git.add');
+    $this->commands('command.git.pull');
     $this->commands('command.composer.install');
   }
 
-  public function provides() {
-  }
 }
