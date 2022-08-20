@@ -16,6 +16,10 @@ class CoreServiceProvider extends ServiceProvider {
   protected $defer = FALSE;
 
   public function boot(Router $router, Kernel $kernel) {
+    $this->publishes([
+                      __DIR__ . '/../../config/github-webhooks.php' => config_path('github-webhooks.php'),
+                      __DIR__ . '/../../migrations/2022_08_19_220300_create_github_webhook_calls_table.php' => base_path('database/migrations/2022_08_19_220300_create_github_webhook_calls_table.php'),
+                     ]);
     $kernel->pushMiddleware(SecurityHeaders::class);
     $this->loadRoutesFrom(__DIR__ . '/../../../routes/api.php');
   }
