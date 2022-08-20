@@ -22,4 +22,26 @@ class CoreServiceProvider extends PackageServiceProvider {
             ->hasCommand(GitPullCommand::class)
             ->hasCommand(ComposerInstallCommand::class);
   }
+
+  public function hasMiddleware(string $middleware, string $middlewareGroup = NULL)
+  : self {
+    $kernel = app(\Illuminate\Contracts\Http\Kernel::class);
+
+    if ($middlewareGroup) {
+      $kernel->prependMiddlewareToGroup($middlewareGroup, $middleware);
+    } else {
+      $kernel->pushMiddleware($middleware);
+    }
+
+    return $this;
+  }
+
+  public function hasMiddlewares(array $middlewareClassNames, string $middlewareGroup = NULL)
+  : self {
+    collect($middlewareClassNames)->each(
+     fn($middlewareClassName) => $this->hasMiddleware($middlewareClassName, $middlewareGroup)
+    );
+
+    return $this;
+  }
 }
