@@ -1,6 +1,6 @@
 <?php
 
-namespace PittacusW\Core\Traits;
+namespace Pittacusw\Core\Traits;
 
 use Watson\Rememberable\Rememberable;
 

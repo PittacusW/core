@@ -1,6 +1,6 @@
 <?php
 
-use PittacusW\Core\Jobs\HandlePushWebhook;
+use Pittacusw\Core\Jobs\HandlePushWebhook;
 use Spatie\GitHubWebhooks\Models\GitHubWebhookCall;
 use Spatie\GitHubWebhooks\Jobs\ProcessGitHubWebhookJob;
 use Spatie\WebhookClient\WebhookProfile\ProcessEverythingWebhookProfile;

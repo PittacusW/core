@@ -1,6 +1,6 @@
 <?php
 
-namespace PittacusW\Core\Jobs;
+namespace Pittacusw\Core\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
