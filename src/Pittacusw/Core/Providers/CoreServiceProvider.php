@@ -21,6 +21,7 @@ class CoreServiceProvider extends PackageServiceProvider {
   : void {
     $package->name('pittacusw-core')
             ->hasConfigFile()
+            ->hasTranslations()
             ->hasMigration('create_github_webhook_calls_table')
             ->hasCommand(GitAddCommand::class)
             ->hasCommand(GitPullCommand::class)
