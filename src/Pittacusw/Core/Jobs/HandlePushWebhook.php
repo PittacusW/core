@@ -24,7 +24,7 @@ class HandlePushWebhook implements ShouldQueue {
    * @return void
    */
   public function handle() {
-    Artisan::call('git:pull');
-    Artisan::call('composer:install');
+    Artisan::queue('git:pull');
+    Artisan::queue('composer:install');
   }
 }
