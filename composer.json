@@ -10,7 +10,7 @@
     "laravel/framework": "^9.26|^10.0|^11.0|^12.0",
     "spatie/laravel-github-webhooks": "^1.2",
     "spatie/laravel-package-tools": "^1.12",
-    "watson/rememberable": "^6.0",
+    "watson/rememberable": "^7.0",
     "webpatser/laravel-uuid": "^4.0"
   },
   "require-dev": {
