@@ -28,7 +28,7 @@ trait RememberTrait {
     $tag = $model->getTable();
     $cacheStore = Cache::getStore();
 
-    if (method_exists($cacheStore, 'tags') && $cacheStore->supportsTags()) {
+    if (method_exists($cacheStore, 'tags')) {
       Cache::tags($tag)->flush();
       return;
     }
