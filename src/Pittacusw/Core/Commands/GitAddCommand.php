@@ -2,42 +2,36 @@
 
 namespace Pittacusw\Core\Commands;
 
-use Illuminate\Console\Command;
+class GitAddCommand extends BaseProcessCommand {
 
-class GitAddCommand extends Command {
-
-  /**
-   * The name and signature of the console command.
-   *
-   * @var string
-   */
   protected $signature = 'git:add {message?}';
 
-  /**
-   * The console command description.
-   *
-   * @var string
-   */
-  protected $description = 'Backups the database';
+  protected $description = 'Commits and pushes the current working tree';
 
-  /**
-   * Create a new command instance.
-   *
-   * @return void
-   */
-  public function __construct() {
-    parent::__construct();
-  }
+  public function handle()
+  : int {
+    $message = $this->argument('message') ?: 'Backup';
 
-  /**
-   * Execute the console command.
-   *
-   * @return int
-   */
-  public function handle() {
-    $message = empty($this->argument('message')) ? 'Backup' : $this->argument('message');
-    $this->line(exec("git add ."));
-    $this->line(exec('git commit -m "' . $message . '"'));
-    $this->line(exec('git push'));
+    if ($this->runExternalCommand(['git', 'add', '.']) !== self::SUCCESS) {
+      return self::FAILURE;
+    }
+
+    $result = $this->executeExternalCommand(['git', 'diff', '--cached', '--quiet']);
+
+    if ($result->exitCode === 0) {
+      $this->components->info('No staged changes to commit.');
+
+      return self::SUCCESS;
+    }
+
+    if ($result->exitCode !== 1) {
+      return $this->failForProcessResult(['git', 'diff', '--cached', '--quiet'], $result);
+    }
+
+    if ($this->runExternalCommand(['git', 'commit', '-m', $message]) !== self::SUCCESS) {
+      return self::FAILURE;
+    }
+
+    return $this->runExternalCommand(['git', 'push']);
   }
 }

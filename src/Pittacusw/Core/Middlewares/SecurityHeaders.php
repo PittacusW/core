@@ -4,19 +4,51 @@ namespace Pittacusw\Core\Middlewares;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders {
 
-  public function handle(Request $request, Closure $next) {
-    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-    header('X-XSS-Protection: 1; mode=block');
-    header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: DENY');
-    //header('Content-Security-Policy', "default-src 'self'");
-    header('Referrer-Policy: no-referrer');
-    header('Permissions-Policy: ');
-    header('Public-Key-Pins-Report-Only: max-age=5184000 ; pin-sha256=\'d7qzRu9zOECb90Uez27xWltNsj0e1Md7GkYYkVoZWmM=\' ; pin-sha256=\'E9CZ9INDbd+2eRQozYqqbQ2yXLVKB7+xcprMF+44U1g=\' ;');
+  public function handle(Request $request, Closure $next)
+  : Response {
+    /** @var Response $response */
+    $response = $next($request);
 
-    return $next($request);
+    if (! config('pittacusw-core.security_headers.enabled', TRUE)) {
+      return $response;
+    }
+
+    if (! $response->headers->has('X-Content-Type-Options')) {
+      $response->headers->set('X-Content-Type-Options', 'nosniff');
+    }
+
+    if (! $response->headers->has('X-Frame-Options')) {
+      $response->headers->set(
+        'X-Frame-Options',
+        config('pittacusw-core.security_headers.frame_options', 'DENY'),
+      );
+    }
+
+    if (! $response->headers->has('Referrer-Policy')) {
+      $response->headers->set(
+        'Referrer-Policy',
+        config('pittacusw-core.security_headers.referrer_policy', 'no-referrer'),
+      );
+    }
+
+    if ($request->isSecure() && config('pittacusw-core.security_headers.hsts.enabled', TRUE)) {
+      $hsts = ['max-age=' . (int) config('pittacusw-core.security_headers.hsts.max_age', 31536000)];
+
+      if (config('pittacusw-core.security_headers.hsts.include_subdomains', TRUE)) {
+        $hsts[] = 'includeSubDomains';
+      }
+
+      if (config('pittacusw-core.security_headers.hsts.preload', FALSE)) {
+        $hsts[] = 'preload';
+      }
+
+      $response->headers->set('Strict-Transport-Security', implode('; ', $hsts));
+    }
+
+    return $response;
   }
 }

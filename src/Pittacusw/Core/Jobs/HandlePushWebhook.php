@@ -3,28 +3,56 @@
 namespace Pittacusw\Core\Jobs;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use RuntimeException;
 use Spatie\GitHubWebhooks\Models\GitHubWebhookCall;
 
 class HandlePushWebhook implements ShouldQueue {
 
   use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-  public GitHubWebhookCall $gitHubWebhookCall;
-
   public function __construct(public GitHubWebhookCall $webhookCall) { }
 
-  /**
-   * Execute the job.
-   *
-   * @return void
-   */
-  public function handle() {
-    Artisan::queue('git:pull');
-    Artisan::queue('composer:install');
+  public function handle()
+  : void {
+    if (! config('pittacusw-core.deployment.enabled', TRUE)) {
+      return;
+    }
+
+    $lock = Cache::lock(
+      'pittacusw-core:deployment',
+      (int) config('pittacusw-core.deployment.lock_seconds', 600),
+    );
+
+    if (! $lock->get()) {
+      $this->release((int) config('pittacusw-core.deployment.retry_delay_seconds', 30));
+
+      return;
+    }
+
+    try {
+      $this->runCommand('git:pull');
+      $this->runCommand('composer:install');
+    } finally {
+      $lock->release();
+    }
+  }
+
+  protected function runCommand(string $command)
+  : void {
+    $exitCode = Artisan::call($command);
+
+    if ($exitCode !== 0) {
+      throw new RuntimeException(sprintf(
+        'The [%s] command failed with exit code %d.',
+        $command,
+        $exitCode,
+      ));
+    }
   }
 }

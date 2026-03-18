@@ -2,50 +2,129 @@
 
 namespace Pittacusw\Core\Traits;
 
-use Watson\Rememberable\Rememberable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Pittacusw\Core\Query\RememberableBuilder;
 
 trait RememberTrait {
 
-  use Rememberable;
+  public static function bootRememberTrait()
+  : void {
+    static::saved(fn($model) => $model->flushRememberCache());
+    static::deleted(fn($model) => $model->flushRememberCache());
 
-  protected $rememberFor;
-  protected $rememberCacheTag;
-
-  public function __construct(array $attributes = []) {
-    $this->rememberFor      = now()->addYear();
-    $this->rememberCacheTag = $this->table;
-    parent::__construct($attributes);
+    if (in_array(SoftDeletes::class, class_uses_recursive(static::class), TRUE)) {
+      static::restored(fn($model) => $model->flushRememberCache());
+    }
   }
 
-  public static function bootRememberTrait() {
-    static::creating(fn($model) => self::flushCache($model));
-    static::updating(fn($model) => self::flushCache($model));
+  protected function newBaseQueryBuilder()
+  : \Illuminate\Database\Query\Builder {
+    $connection = $this->getConnection();
+    $builder = new RememberableBuilder(
+      $connection,
+      $connection->getQueryGrammar(),
+      $connection->getPostProcessor(),
+    );
+
+    $builder->remember($this->getRememberFor());
+
+    if (($cacheTag = $this->getRememberCacheTag()) !== null) {
+      $builder->cacheTags($cacheTag);
+    }
+
+    $builder->prefix($this->getRememberCachePrefix());
+
+    if (($cacheDriver = $this->getRememberCacheDriver()) !== null) {
+      $builder->cacheDriver($cacheDriver);
+    }
+
+    return $builder;
   }
 
-  protected static function flushCache($model) {
-    $tag = $model->getTable();
+  public function flushRememberCache()
+  : void {
     $cacheStore = Cache::getStore();
+    $tag = $this->getRememberCacheTag();
 
-    if (method_exists($cacheStore, 'tags')) {
+    if ($tag !== null && $this->cacheStoreSupportsTags()) {
       Cache::tags($tag)->flush();
+
       return;
     }
 
-    $baseKey = strtolower(class_basename($model));
-    $keyPrefix = "rememberable:$baseKey:";
+    $this->flushPrefixedCacheKeys($cacheStore, $this->getRememberCachePrefix());
+  }
 
-    if (method_exists($cacheStore, 'connection') && method_exists($cacheStore->connection(), 'keys')) {
-      $redis = $cacheStore->connection();
-      $keys = $redis->keys("*$keyPrefix*");
+  protected function cacheStoreSupportsTags()
+  : bool {
+    return method_exists(Cache::getStore(), 'tags');
+  }
 
-      foreach ($keys as $key) {
-        $plainKey = Str::after($key, config('cache.prefix') . ':');
-        Cache::forget($plainKey);
-      }
-    } else {
-      logger()->warning("RememberTrait: Cache driver does not support tags or key enumeration. Cache not flushed for {$model->getTable()}.");
+  protected function getRememberFor()
+  : \DateTimeInterface|int {
+    return property_exists($this, 'rememberFor') ? $this->rememberFor : 31536000;
+  }
+
+  protected function getRememberCacheTag()
+  : ?string {
+    if (! $this->cacheStoreSupportsTags()) {
+      return null;
     }
+
+    if (property_exists($this, 'rememberCacheTag')) {
+      return $this->rememberCacheTag;
+    }
+
+    return $this->getTable();
+  }
+
+  protected function getRememberCachePrefix()
+  : string {
+    if (property_exists($this, 'rememberCachePrefix')) {
+      return $this->rememberCachePrefix;
+    }
+
+    return "rememberable:{$this->getTable()}";
+  }
+
+  protected function getRememberCacheDriver()
+  : ?string {
+    return property_exists($this, 'rememberCacheDriver')
+      ? $this->rememberCacheDriver
+      : null;
+  }
+
+  protected function flushPrefixedCacheKeys(object $cacheStore, string $keyPrefix)
+  : void {
+    if (method_exists($cacheStore, 'connection') && method_exists($cacheStore->connection(), 'scan')) {
+      $connection = $cacheStore->connection();
+      $cursor = null;
+      $defaultCursor = '0';
+      $cachePrefix = config('cache.prefix');
+      $fullPrefix = $cachePrefix ? "{$cachePrefix}:" : '';
+
+      do {
+        $scanResult = $connection->scan($cursor, [
+          'match' => "{$fullPrefix}{$keyPrefix}:*",
+          'count' => 100,
+        ]);
+
+        if (! is_array($scanResult) || count($scanResult) !== 2) {
+          break;
+        }
+
+        [$cursor, $keys] = $scanResult;
+
+        foreach ($keys as $key) {
+          Cache::forget(Str::after($key, $fullPrefix));
+        }
+      } while ((string) $cursor !== $defaultCursor);
+
+      return;
+    }
+
+    logger()->warning("RememberTrait: Cache driver does not support tags or key enumeration. Cache not flushed for {$this->getTable()}.");
   }
 }
