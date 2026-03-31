@@ -2,14 +2,14 @@
 
 namespace Pittacusw\Core\Jobs;
 
+use RuntimeException;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Cache;
-use RuntimeException;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Spatie\GitHubWebhooks\Models\GitHubWebhookCall;
 
 class HandlePushWebhook implements ShouldQueue {
@@ -20,16 +20,16 @@ class HandlePushWebhook implements ShouldQueue {
 
   public function handle()
   : void {
-    if (! config('pittacusw-core.deployment.enabled', TRUE)) {
+    if (!config('pittacusw-core.deployment.enabled', TRUE)) {
       return;
     }
 
     $lock = Cache::lock(
-      'pittacusw-core:deployment',
-      (int) config('pittacusw-core.deployment.lock_seconds', 600),
+     'pittacusw-core:deployment',
+     (int) config('pittacusw-core.deployment.lock_seconds', 600),
     );
 
-    if (! $lock->get()) {
+    if (!$lock->get()) {
       $this->release((int) config('pittacusw-core.deployment.retry_delay_seconds', 30));
 
       return;
@@ -49,10 +49,10 @@ class HandlePushWebhook implements ShouldQueue {
 
     if ($exitCode !== 0) {
       throw new RuntimeException(sprintf(
-        'The [%s] command failed with exit code %d.',
-        $command,
-        $exitCode,
-      ));
+                                  'The [%s] command failed with exit code %d.',
+                                  $command,
+                                  $exitCode,
+                                 ));
     }
   }
 }

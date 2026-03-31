@@ -3,18 +3,11 @@
 namespace Pittacusw\Core\Tests\Feature;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use Pittacusw\Core\Tests\TestCase;
+use Illuminate\Support\Facades\Route;
 use Pittacusw\Core\Middlewares\SecurityHeaders;
 
 class SecurityHeadersTest extends TestCase {
-
-  protected function setUp()
-  : void {
-    parent::setUp();
-
-    Route::get('/headers', fn() => response('ok'));
-  }
 
   public function test_it_adds_safe_default_security_headers()
   : void {
@@ -35,13 +28,13 @@ class SecurityHeadersTest extends TestCase {
     config()->set('pittacusw-core.security_headers.hsts.preload', TRUE);
 
     $response = (new SecurityHeaders())->handle(
-      Request::create('https://example.com/headers', 'GET'),
-      fn() => response('ok'),
+     Request::create('https://example.com/headers', 'GET'),
+     fn() => response('ok'),
     );
 
     $this->assertSame(
-      'max-age=31536000; includeSubDomains; preload',
-      $response->headers->get('Strict-Transport-Security'),
+     'max-age=31536000; includeSubDomains; preload',
+     $response->headers->get('Strict-Transport-Security'),
     );
   }
 
@@ -54,5 +47,12 @@ class SecurityHeadersTest extends TestCase {
     $response->assertHeaderMissing('X-Content-Type-Options');
     $response->assertHeaderMissing('X-Frame-Options');
     $response->assertHeaderMissing('Referrer-Policy');
+  }
+
+  protected function setUp()
+  : void {
+    parent::setUp();
+
+    Route::get('/headers', fn() => response('ok'));
   }
 }

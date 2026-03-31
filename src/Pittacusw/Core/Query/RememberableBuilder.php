@@ -2,18 +2,21 @@
 
 namespace Pittacusw\Core\Query;
 
+use Closure;
 use DateTimeInterface;
+use Illuminate\Database\Query\Builder;
 
-class RememberableBuilder extends \Illuminate\Database\Query\Builder {
+class RememberableBuilder extends Builder {
 
-  protected ?string $cacheKey = null;
-  protected DateTimeInterface|int|null $cacheSeconds = null;
-  protected array|string|null $cacheTags = null;
-  protected ?string $cacheDriver = null;
-  protected string $cachePrefix = 'rememberable';
+  protected ?string                    $cacheKey           = NULL;
+  protected DateTimeInterface|int|null $cacheSeconds       = NULL;
+  protected array|string|null          $cacheTags          = NULL;
+  protected ?string                    $cacheDriver        = NULL;
+  protected string                     $cachePrefix        = 'rememberable';
+  protected                            $cacheFlushCallback = NULL;
 
   public function get($columns = ['*']) {
-    if ($this->cacheSeconds !== null) {
+    if ($this->cacheSeconds !== NULL) {
       return $this->getCached($columns);
     }
 
@@ -21,56 +24,105 @@ class RememberableBuilder extends \Illuminate\Database\Query\Builder {
   }
 
   public function getCached($columns = ['*']) {
-    if ($this->columns === null) {
+    if ($this->columns === NULL) {
       $this->columns = $columns;
     }
 
     return $this->resolveFromCache(
-      $this->getCacheKey(),
-      $this->getCacheCallback($columns),
+     $this->getCacheKey(),
+     $this->getCacheCallback($columns),
     );
   }
 
-  public function pluck($column, $key = null) {
-    if ($this->cacheSeconds !== null) {
+  protected function resolveFromCache(string $key, Closure $callback) {
+    $cache   = $this->getCache();
+    $seconds = $this->cacheSeconds;
+
+    if ($seconds instanceof DateTimeInterface || $seconds > 0) {
+      return $cache->remember($key, $seconds, $callback);
+    }
+
+    return $cache->rememberForever($key, $callback);
+  }
+
+  protected function getCache() {
+    $cache = $this->getCacheDriver();
+
+    return $this->cacheTags ? $cache->tags($this->cacheTags) : $cache;
+  }
+
+  protected function getCacheDriver() {
+    return app('cache')->driver($this->cacheDriver);
+  }
+
+  public function remember(DateTimeInterface|int $seconds, ?string $key = NULL)
+  : static {
+    $this->cacheSeconds = $seconds;
+    $this->cacheKey     = $key;
+
+    return $this;
+  }
+
+  public function rememberForever(?string $key = NULL)
+  : static {
+    return $this->remember(- 1, $key);
+  }
+
+  public function getCacheKey(mixed $appends = NULL)
+  : string {
+    return $this->cachePrefix . ':' . ($this->cacheKey ?: $this->generateCacheKey($appends));
+  }
+
+  public function generateCacheKey(mixed $appends = NULL)
+  : string {
+    return hash('sha256', $this->connection->getDatabaseName() . $this->toSql() . serialize($this->getBindings()) . serialize($appends));
+  }
+
+  protected function getCacheCallback(array $columns)
+  : Closure {
+    return function() use ($columns) {
+      $this->cacheSeconds = NULL;
+
+      return $this->get($columns);
+    };
+  }
+
+  public function pluck($column, $key = NULL) {
+    if ($this->cacheSeconds !== NULL) {
       return $this->pluckCached($column, $key);
     }
 
     return parent::pluck($column, $key);
   }
 
-  public function pluckCached($column, $key = null) {
+  public function pluckCached($column, $key = NULL) {
     return $this->resolveFromCache(
-      $this->getCacheKey($column . $key),
-      $this->pluckCacheCallback($column, $key),
+     $this->getCacheKey($column . $key),
+     $this->pluckCacheCallback($column, $key),
     );
   }
 
-  public function remember(DateTimeInterface|int $seconds, ?string $key = null)
-  : static {
-    $this->cacheSeconds = $seconds;
-    $this->cacheKey = $key;
+  protected function pluckCacheCallback(string $column, mixed $key = NULL)
+  : Closure {
+    return function() use ($column, $key) {
+      $this->cacheSeconds = NULL;
 
-    return $this;
-  }
-
-  public function rememberForever(?string $key = null)
-  : static {
-    return $this->remember(-1, $key);
-  }
-
-  public function dontRemember()
-  : static {
-    $this->cacheSeconds = null;
-    $this->cacheKey = null;
-    $this->cacheTags = null;
-
-    return $this;
+      return $this->pluck($column, $key);
+    };
   }
 
   public function doNotRemember()
   : static {
     return $this->dontRemember();
+  }
+
+  public function dontRemember()
+  : static {
+    $this->cacheSeconds = NULL;
+    $this->cacheKey     = NULL;
+    $this->cacheTags    = NULL;
+
+    return $this;
   }
 
   public function prefix(string $prefix)
@@ -94,52 +146,65 @@ class RememberableBuilder extends \Illuminate\Database\Query\Builder {
     return $this;
   }
 
-  public function getCacheKey(mixed $appends = null)
-  : string {
-    return $this->cachePrefix . ':' . ($this->cacheKey ?: $this->generateCacheKey($appends));
+  public function onCacheFlush(callable $callback)
+  : static {
+    $this->cacheFlushCallback = $callback;
+
+    return $this;
   }
 
-  public function generateCacheKey(mixed $appends = null)
-  : string {
-    return hash('sha256', $this->connection->getName() . $this->toSql() . serialize($this->getBindings()) . serialize($appends));
+  public function insert(array $values) {
+    $result = parent::insert($values);
+
+    $this->flushCacheAfterMutation($result);
+
+    return $result;
   }
 
-  protected function resolveFromCache(string $key, \Closure $callback) {
-    $cache = $this->getCache();
-    $seconds = $this->cacheSeconds;
-
-    if ($seconds instanceof DateTimeInterface || $seconds > 0) {
-      return $cache->remember($key, $seconds, $callback);
+  protected function flushCacheAfterMutation(mixed $result)
+  : void {
+    if (!$result || !is_callable($this->cacheFlushCallback)) {
+      return;
     }
 
-    return $cache->rememberForever($key, $callback);
+    call_user_func($this->cacheFlushCallback);
   }
 
-  protected function getCache() {
-    $cache = $this->getCacheDriver();
+  public function insertOrIgnore(array $values) {
+    $result = parent::insertOrIgnore($values);
 
-    return $this->cacheTags ? $cache->tags($this->cacheTags) : $cache;
+    $this->flushCacheAfterMutation($result);
+
+    return $result;
   }
 
-  protected function getCacheDriver() {
-    return app('cache')->driver($this->cacheDriver);
+  public function insertGetId(array $values, $sequence = NULL) {
+    $result = parent::insertGetId($values, $sequence);
+
+    $this->flushCacheAfterMutation($result !== 0 && $result !== NULL);
+
+    return $result;
   }
 
-  protected function getCacheCallback(array $columns)
-  : \Closure {
-    return function() use ($columns) {
-      $this->cacheSeconds = null;
+  public function updateFrom(array $values) {
+    $result = parent::updateFrom($values);
 
-      return $this->get($columns);
-    };
+    $this->flushCacheAfterMutation($result);
+
+    return $result;
   }
 
-  protected function pluckCacheCallback(string $column, mixed $key = null)
-  : \Closure {
-    return function() use ($column, $key) {
-      $this->cacheSeconds = null;
+  public function upsert(array $values, array|string $uniqueBy, ?array $update = NULL) {
+    $result = parent::upsert($values, $uniqueBy, $update);
 
-      return $this->pluck($column, $key);
-    };
+    $this->flushCacheAfterMutation($result);
+
+    return $result;
+  }
+
+  public function truncate() {
+    parent::truncate();
+
+    $this->flushCacheAfterMutation(TRUE);
   }
 }

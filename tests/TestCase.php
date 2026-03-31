@@ -2,8 +2,8 @@
 
 namespace Pittacusw\Core\Tests;
 
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Pittacusw\Core\Providers\CoreServiceProvider;
 use Spatie\GitHubWebhooks\GitHubWebhooksServiceProvider;
@@ -13,8 +13,8 @@ abstract class TestCase extends Orchestra {
   protected function getPackageProviders($app)
   : array {
     return [
-      GitHubWebhooksServiceProvider::class,
-      CoreServiceProvider::class,
+     GitHubWebhooksServiceProvider::class,
+     CoreServiceProvider::class,
     ];
   }
 
@@ -24,9 +24,9 @@ abstract class TestCase extends Orchestra {
     $app['config']->set('cache.default', 'array');
     $app['config']->set('database.default', 'testing');
     $app['config']->set('database.connections.testing', [
-      'driver'   => 'sqlite',
-      'database' => ':memory:',
-      'prefix'   => '',
+     'driver'   => 'sqlite',
+     'database' => ':memory:',
+     'prefix'   => '',
     ]);
     $app['config']->set('queue.default', 'sync');
     $app['config']->set('github-webhooks.signing_secret', 'test-secret');

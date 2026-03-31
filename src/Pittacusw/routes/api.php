@@ -1,5 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Spatie\GitHubWebhooks\Http\Controllers\GitHubWebhooksController;
 
-Route::post('api/github', \Spatie\GitHubWebhooks\Http\Controllers\GitHubWebhooksController::class);
+Route::post('api/github', GitHubWebhooksController::class);

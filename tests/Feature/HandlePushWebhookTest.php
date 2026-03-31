@@ -2,14 +2,14 @@
 
 namespace Pittacusw\Core\Tests\Feature;
 
-use RuntimeException;
 use Mockery;
-use Illuminate\Support\Facades\Cache;
+use RuntimeException;
 use Pittacusw\Core\Tests\TestCase;
-use Pittacusw\Core\Jobs\HandlePushWebhook;
-use Pittacusw\Core\Tests\Support\FakeLock;
-use Spatie\GitHubWebhooks\Models\GitHubWebhookCall;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
+use Pittacusw\Core\Tests\Support\FakeLock;
+use Pittacusw\Core\Jobs\HandlePushWebhook;
+use Spatie\GitHubWebhooks\Models\GitHubWebhookCall;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 
 class HandlePushWebhookTest extends TestCase {
@@ -18,9 +18,11 @@ class HandlePushWebhookTest extends TestCase {
   : void {
     config()->set('pittacusw-core.deployment.enabled', FALSE);
 
-    Cache::shouldReceive('lock')->never();
+    Cache::shouldReceive('lock')
+         ->never();
     $kernel = Mockery::mock(ConsoleKernel::class);
-    $kernel->shouldReceive('call')->never();
+    $kernel->shouldReceive('call')
+           ->never();
 
     Artisan::swap($kernel);
 
@@ -32,11 +34,12 @@ class HandlePushWebhookTest extends TestCase {
   public function test_it_releases_the_job_when_a_deployment_is_already_running()
   : void {
     Cache::shouldReceive('lock')
-      ->once()
-      ->andReturn(new FakeLock(FALSE));
+         ->once()
+         ->andReturn(new FakeLock(FALSE));
 
     $kernel = Mockery::mock(ConsoleKernel::class);
-    $kernel->shouldReceive('call')->never();
+    $kernel->shouldReceive('call')
+           ->never();
 
     Artisan::swap($kernel);
 
@@ -52,19 +55,19 @@ class HandlePushWebhookTest extends TestCase {
     $lock = new FakeLock(TRUE);
 
     Cache::shouldReceive('lock')
-      ->once()
-      ->andReturn($lock);
+         ->once()
+         ->andReturn($lock);
 
     $kernel = Mockery::mock(ConsoleKernel::class);
     $kernel->shouldReceive('call')
-      ->once()
-      ->with('git:pull')
-      ->andReturn(0);
+           ->once()
+           ->with('git:pull')
+           ->andReturn(0);
 
     $kernel->shouldReceive('call')
-      ->once()
-      ->with('composer:install')
-      ->andReturn(0);
+           ->once()
+           ->with('composer:install')
+           ->andReturn(0);
 
     Artisan::swap($kernel);
 
@@ -78,18 +81,18 @@ class HandlePushWebhookTest extends TestCase {
     $lock = new FakeLock(TRUE);
 
     Cache::shouldReceive('lock')
-      ->once()
-      ->andReturn($lock);
+         ->once()
+         ->andReturn($lock);
 
     $kernel = Mockery::mock(ConsoleKernel::class);
     $kernel->shouldReceive('call')
-      ->once()
-      ->with('git:pull')
-      ->andReturn(1);
+           ->once()
+           ->with('git:pull')
+           ->andReturn(1);
 
     $kernel->shouldReceive('call')
-      ->never()
-      ->with('composer:install');
+           ->never()
+           ->with('composer:install');
 
     Artisan::swap($kernel);
 

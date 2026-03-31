@@ -13,11 +13,11 @@ class FakeProcessRunner implements RunsExternalProcesses {
   public array $commands = [];
 
   /**
-   * @param array<int, ProcessResult> $results
+   * @param  array<int, ProcessResult>  $results
    */
   public function __construct(private array $results) { }
 
-  public function run(array $command, ?string $workingDirectory = null)
+  public function run(array $command, ?string $workingDirectory = NULL)
   : ProcessResult {
     $this->commands[] = $command;
 

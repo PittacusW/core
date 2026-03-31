@@ -6,5 +6,6 @@ use Pittacusw\Core\Support\ProcessResult;
 
 interface RunsExternalProcesses {
 
-  public function run(array $command, ?string $workingDirectory = null): ProcessResult;
+  public function run(array $command, ?string $workingDirectory = NULL)
+  : ProcessResult;
 }

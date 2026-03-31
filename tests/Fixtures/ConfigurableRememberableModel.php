@@ -10,10 +10,10 @@ class ConfigurableRememberableModel extends Model {
 
   use RememberTrait;
 
-  protected $rememberFor = 120;
-  protected $rememberCacheTag = 'custom-tag';
-  protected $rememberCachePrefix = 'custom-prefix';
-  protected $rememberCacheDriver = 'array';
+  protected                   $rememberFor         = 120;
+  protected                   $rememberCacheTag    = 'custom-tag';
+  protected                   $rememberCachePrefix = 'custom-prefix';
+  protected                   $rememberCacheDriver = 'array';
   protected DateTimeInterface $rememberForDateTime;
 
   public function __construct(array $attributes = []) {
@@ -30,7 +30,7 @@ class ConfigurableRememberableModel extends Model {
   public function exposedRememberForDateTime()
   : DateTimeInterface {
     $originalRememberFor = $this->rememberFor;
-    $this->rememberFor = $this->rememberForDateTime;
+    $this->rememberFor   = $this->rememberForDateTime;
 
     try {
       return $this->getRememberFor();

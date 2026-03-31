@@ -10,6 +10,9 @@ class ComposerInstallCommand extends BaseProcessCommand {
 
   public function handle()
   : int {
-    return $this->runExternalCommand(['composer', 'install']);
+    return $this->runExternalCommand([
+                                      'composer',
+                                      'install'
+                                     ]);
   }
 }

@@ -10,6 +10,9 @@ class GitPullCommand extends BaseProcessCommand {
 
   public function handle()
   : int {
-    return $this->runExternalCommand(['git', 'pull']);
+    return $this->runExternalCommand([
+                                      'git',
+                                      'pull'
+                                     ]);
   }
 }

@@ -3,14 +3,14 @@
 namespace Pittacusw\Core\Providers;
 
 use Illuminate\Contracts\Http\Kernel;
-use Pittacusw\Core\Commands\ComposerInstallCommand;
+use Spatie\LaravelPackageTools\Package;
 use Pittacusw\Core\Commands\GitAddCommand;
-use Pittacusw\Core\Commands\GitPullCommand;
-use Pittacusw\Core\Contracts\RunsExternalProcesses;
 use Pittacusw\Core\Jobs\HandlePushWebhook;
+use Pittacusw\Core\Commands\GitPullCommand;
 use Pittacusw\Core\Middlewares\SecurityHeaders;
 use Pittacusw\Core\Support\SymfonyProcessRunner;
-use Spatie\LaravelPackageTools\Package;
+use Pittacusw\Core\Commands\ComposerInstallCommand;
+use Pittacusw\Core\Contracts\RunsExternalProcesses;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class CoreServiceProvider extends PackageServiceProvider {
@@ -22,7 +22,7 @@ class CoreServiceProvider extends PackageServiceProvider {
 
   public function bootingPackage()
   : void {
-    if (! config('pittacusw-core.security_headers.enabled', TRUE)) {
+    if (!config('pittacusw-core.security_headers.enabled', TRUE)) {
       return;
     }
 
@@ -33,7 +33,7 @@ class CoreServiceProvider extends PackageServiceProvider {
   : void {
     $jobs = config('github-webhooks.jobs', []);
 
-    if (! array_key_exists('push', $jobs) && ! array_key_exists('*', $jobs)) {
+    if (!array_key_exists('push', $jobs) && !array_key_exists('*', $jobs)) {
       $jobs['push'] = HandlePushWebhook::class;
 
       config()->set('github-webhooks.jobs', $jobs);
