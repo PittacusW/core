@@ -3,8 +3,6 @@
 namespace Pittacusw\Core\Traits;
 
 use DateTimeInterface;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Pittacusw\Core\Query\RememberableBuilder;
@@ -23,72 +21,29 @@ trait RememberTrait {
     }
   }
 
+  /**
+   * Invalidation rotates the tag's version token instead of deleting cached
+   * entries. Cached query keys embed the token, so rotating it orphans every
+   * previous entry at once — including entries written AFTER the rotation by
+   * requests that read the database BEFORE the mutation. Deleting keys (tag
+   * flush or scan) cannot close that race; rotating the namespace can.
+   * Orphaned entries age out through their TTL.
+   */
   public function flushRememberCache()
   : void {
-    $cacheStore = Cache::getStore();
-    $tag        = $this->getRememberCacheTag();
-
-    if ($tag !== NULL && $this->cacheStoreSupportsTags()) {
-      Cache::tags($tag)
-           ->flush();
-
-      return;
-    }
-
-    $this->flushPrefixedCacheKeys($cacheStore, $this->getRememberCachePrefix());
+    RememberableBuilder::rotateCacheVersion(
+     app('cache')->driver($this->getRememberCacheDriver()),
+     $this->getRememberCacheTag(),
+    );
   }
 
   protected function getRememberCacheTag()
-  : ?string {
-    if (!$this->cacheStoreSupportsTags()) {
-      return NULL;
-    }
-
+  : string {
     if (property_exists($this, 'rememberCacheTag')) {
       return $this->rememberCacheTag;
     }
 
     return $this->getTable();
-  }
-
-  protected function cacheStoreSupportsTags()
-  : bool {
-    return method_exists(Cache::getStore(), 'tags');
-  }
-
-  protected function flushPrefixedCacheKeys(object $cacheStore, string $keyPrefix)
-  : void {
-    if (method_exists($cacheStore, 'connection') && method_exists($cacheStore->connection(), 'scan')) {
-      $connection = $cacheStore->connection();
-      $cursor = NULL;
-      $defaultCursor = '0';
-      $cachePrefix = config('cache.prefix');
-      $fullPrefix = $cachePrefix ? "{$cachePrefix}:" : '';
-
-      do {
-        $scanResult = $connection->scan($cursor, [
-         'match' => "{$fullPrefix}{$keyPrefix}:*",
-         'count' => 100,
-        ]);
-
-        if (!is_array($scanResult) || count($scanResult) !== 2) {
-          break;
-        }
-
-        [
-         $cursor,
-         $keys
-        ] = $scanResult;
-
-        foreach ($keys as $key) {
-          Cache::forget(Str::after($key, $fullPrefix));
-        }
-      } while ((string) $cursor !== $defaultCursor);
-
-      return;
-    }
-
-    logger()->warning("RememberTrait: Cache driver does not support tags or key enumeration. Cache not flushed for {$this->getTable()}.");
   }
 
   protected function getRememberCachePrefix()
@@ -111,11 +66,7 @@ trait RememberTrait {
 
     $builder->remember($this->getRememberFor());
     $builder->onCacheFlush(fn() => $this->flushRememberCache());
-
-    if (($cacheTag = $this->getRememberCacheTag()) !== NULL) {
-      $builder->cacheTags($cacheTag);
-    }
-
+    $builder->cacheTags($this->getRememberCacheTag());
     $builder->prefix($this->getRememberCachePrefix());
 
     if (($cacheDriver = $this->getRememberCacheDriver()) !== NULL) {

@@ -46,9 +46,7 @@ class RememberableBuilder extends Builder {
   }
 
   protected function getCache() {
-    $cache = $this->getCacheDriver();
-
-    return $this->cacheTags ? $cache->tags($this->cacheTags) : $cache;
+    return $this->getCacheDriver();
   }
 
   protected function getCacheDriver() {
@@ -70,7 +68,53 @@ class RememberableBuilder extends Builder {
 
   public function getCacheKey(mixed $appends = NULL)
   : string {
-    return $this->cachePrefix . ':' . ($this->cacheKey ?: $this->generateCacheKey($appends));
+    return $this->cachePrefix . ':' . $this->cacheVersionSegment() . ':' . ($this->cacheKey ?: $this->generateCacheKey($appends));
+  }
+
+  /**
+   * Cache keys embed a random per-tag version token. Invalidation rotates the
+   * token (see rotateCacheVersion()), instantly orphaning every entry of the
+   * previous generation — deletion-free, race-free, and independent of the
+   * cache store's tag support.
+   */
+  protected function cacheVersionSegment()
+  : string {
+    $tags = array_values(array_filter((array) ($this->cacheTags ?? [])));
+
+    if ($tags === []) {
+      return 'v0';
+    }
+
+    $cache    = $this->getCacheDriver();
+    $versions = array_map(
+     static fn(string $tag) => static::cacheVersion($cache, $tag),
+     $tags,
+    );
+
+    return implode('.', $versions);
+  }
+
+  public static function cacheVersion(object $cache, string $tag)
+  : string {
+    return $cache->rememberForever(
+     static::cacheVersionKey($tag),
+     static fn() => static::freshCacheVersion(),
+    );
+  }
+
+  public static function rotateCacheVersion(object $cache, string $tag)
+  : void {
+    $cache->forever(static::cacheVersionKey($tag), static::freshCacheVersion());
+  }
+
+  public static function cacheVersionKey(string $tag)
+  : string {
+    return "rememberable:version:{$tag}";
+  }
+
+  protected static function freshCacheVersion()
+  : string {
+    return bin2hex(random_bytes(8));
   }
 
   public function generateCacheKey(mixed $appends = NULL)
@@ -182,6 +226,22 @@ class RememberableBuilder extends Builder {
     $result = parent::insertGetId($values, $sequence);
 
     $this->flushCacheAfterMutation($result !== 0 && $result !== NULL);
+
+    return $result;
+  }
+
+  public function update(array $values) {
+    $result = parent::update($values);
+
+    $this->flushCacheAfterMutation($result);
+
+    return $result;
+  }
+
+  public function delete($id = NULL) {
+    $result = parent::delete($id);
+
+    $this->flushCacheAfterMutation($result);
 
     return $result;
   }
